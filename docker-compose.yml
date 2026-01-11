@@ -1,181 +1,180 @@
-  # docker-compose.yml
+# docker-compose.yml
 
-  services:
-    # ==========================
-    # keycloak
-    # ==========================
-    keycloak:
-      image: quay.io/keycloak/keycloak:26.5.0
-      restart: unless-stopped
-      ports:
-        - "8090:8080" # 서비스
-        - "9000:9000" # HealthCheck
-      networks:
-        - dev_ops_net
-      env_file:
-        - .env
-      command: ["start-dev"]  # 실제 서비스 시 제거 필요.
-      environment:
-        - KC_BOOTSTRAP_ADMIN_USERNAME=${ADMIN_ID}
-        - KC_BOOTSTRAP_ADMIN_PASSWORD=${ADMIN_PW}
-        - KC_DB=postgres
-        - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
-        - KC_DB_USERNAME=${ADMIN_ID}
-        - KC_DB_PASSWORD=${ADMIN_PW}
-        - KC_METRICS_ENABLED=true
-      depends_on:
-        postgres:
-          condition: service_healthy
+services:
+  # ==========================
+  # keycloak
+  # ==========================
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.5.0
+    restart: unless-stopped
+    ports:
+      - "8090:8080" # 서비스
+      - "9000:9000" # HealthCheck
+    networks:
+      - dev_ops_net
+    env_file:
+      - .env
+    command: ["start-dev"]  # 실제 서비스 시 제거 필요.
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${ADMIN_ID}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${ADMIN_PW}
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
+      - KC_DB_USERNAME=${ADMIN_ID}
+      - KC_DB_PASSWORD=${ADMIN_PW}
+      - KC_METRICS_ENABLED=true
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-    # ==========================
-    # postgres _ keycloak's DB
-    # ==========================
-    postgres:
-      image: postgres:16-alpine3.21
-      restart: unless-stopped
-      networks:
-        - dev_ops_net
-      env_file:
-        - .env
-      environment:
-        - POSTGRES_DB=keycloak
-        - POSTGRES_USER=${ADMIN_ID}
-        - POSTGRES_PASSWORD=${ADMIN_PW}
-      volumes:
-        - postgres_data:/var/lib/postgresql/data
-      healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U ${ADMIN_ID}"]
-        interval: 5s
-        retries: 5
+  # ==========================
+  # postgres _ keycloak's DB
+  # ==========================
+  postgres:
+    image: postgres:16-alpine3.21
+    restart: unless-stopped
+    networks:
+      - dev_ops_net
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=${ADMIN_ID}
+      - POSTGRES_PASSWORD=${ADMIN_PW}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ADMIN_ID}"]
+      interval: 5s
+      retries: 5
 
-    # ==========================
-    # grafana
-    # ==========================
-    grafana:
-      image: grafana/grafana:12.4.0-20836657505
-      restart: unless-stopped
-      depends_on:
-        - prometheus
-      environment:
-        - GF_SECURITY_ADMIN_USER=${ADMIN_ID}
-        - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PW}
-        - GF_AUTH_GENERIC_OAUTH_ENABLED=true
-        - GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN=true
-        - GRAFANA_OAUTH_CLIENT_SECRET=${GRAFANA_OAUTH_CLIENT_SECRET}
-        - KC_REALM=${KC_REALM}
-      volumes:
-        - grafana_data:/var/lib/grafana
-        - ./monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
-      networks:
-        - dev_ops_net
-      ports:
-        - "5000:3000"
+  # ==========================
+  # grafana
+  # ==========================
+  grafana:
+    image: grafana/grafana:12.3
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_USER=${ADMIN_ID}
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PW}
+      - GF_AUTH_GENERIC_OAUTH_ENABLED=true
+      - GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN=true
+      - GRAFANA_OAUTH_CLIENT_SECRET=${GRAFANA_OAUTH_CLIENT_SECRET}
+      - KC_REALM=${KC_REALM}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+    networks:
+      - dev_ops_net
+    ports:
+      - "5000:3000"
 
-    # ==========================
-    # Prometheus
-    # ==========================
-    prometheus:
-      image: prom/prometheus:v3.9.1
-      restart: unless-stopped
-      volumes:
-        - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-        - ./monitoring/prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
-        - prometheus_data:/prometheus
-      networks:
-        - dev_ops_net
-      ports:
-        - "9090:9090"
+  # ==========================
+  # Prometheus
+  # ==========================
+  prometheus:
+    image: prom/prometheus:v3.9.1
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - dev_ops_net
+    ports:
+      - "9090:9090"
 
-    # ==========================
-    # Alertmanager
-    # ==========================
-    alertmanager:
-      image: prom/alertmanager:v0.30.0
-      volumes:
-        - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-      restart: unless-stopped
-      networks:
-        - dev_ops_net
-      ports:
-        - 9093:9093
+  # ==========================
+  # Alertmanager
+  # ==========================
+  alertmanager:
+    image: prom/alertmanager:v0.30.0
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    restart: unless-stopped
+    networks:
+      - dev_ops_net
+    ports:
+      - 9093:9093
 
-    # ==========================
-    # Loki
-    # ==========================
-    loki:
-      image: grafana/loki:3.6.2
-      restart: unless-stopped
-      networks:
-        - dev_ops_net
-      ports:
-        - "3100:3100"
-      volumes:
-        - ./monitoring/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
-        - loki_data:/loki
-      command: -config.file=/etc/loki/local-config.yaml -config.expand-env=true
+  # ==========================
+  # Loki
+  # ==========================
+  loki:
+    image: grafana/loki:3.6.2
+    restart: unless-stopped
+    networks:
+      - dev_ops_net
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml -config.expand-env=true
 
-    # ==========================
-    # promtail
-    # ==========================
-    promtail:
-      image: grafana/promtail:3.6.2
-      restart: unless-stopped
-      networks:
-        - dev_ops_net
-      depends_on:
-        - loki
-      command: -config.file=/etc/promtail/promtail-config.yaml
-      volumes:
-        - ./monitoring/promtail/config.yaml:/etc/promtail/promtail-config.yaml:ro
-        - /var/run/docker.sock:/var/run/docker.sock:ro
-        - /var/lib/docker/containers:/var/lib/docker/containers:ro
-        - ./log/keycloak:/var/logs/keycloak:ro
-    
-    # ==========================
-    # jenkins
-    # ==========================
-    jenkins:
-      build:
-        context: ./CICD/jenkins
-        args:
-          DOCKER_GID: "0"
-      image: jenkins:lts-jdk17-dockercli
-      restart: unless-stopped
-      networks:
-        - dev_ops_net
-      ports:
-        - "8888:8080"
-        - "50000:50000"
-      volumes:
-        - jenkins_home:/var/jenkins_home
-        - /var/run/docker.sock:/var/run/docker.sock
+  # ==========================
+  # promtail
+  # ==========================
+  promtail:
+    image: grafana/promtail:3.6.2
+    restart: unless-stopped
+    networks:
+      - dev_ops_net
+    depends_on:
+      - loki
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    volumes:
+      - ./monitoring/promtail/config.yaml:/etc/promtail/promtail-config.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+  
+  # ==========================
+  # jenkins
+  # ==========================
+  jenkins:
+    build:
+      context: ./CICD/jenkins
+      args:
+        DOCKER_GID: "0"
+    image: jenkins:lts-jdk17-dockercli
+    restart: unless-stopped
+    networks:
+      - dev_ops_net
+    ports:
+      - "8888:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
 
-    # ==========================
-    # node_exporter _ 시스템 매트릭 (linux)
-    # ==========================
-    # system_exporter:
-    #   image: prom/node-exporter:latest
-    #   restart: unless-stopped
-    #   networks:
-    #     - dev_ops_net
-    #   volumes:
-    #     - /proc:/host/proc:ro
-    #     - /sys:/host/sys:ro
-    #     - /:/rootfs:ro
-    #   command:
-    #     - '--path.procfs=/host/proc'
-    #     - '--path.rootfs=/rootfs'
-    #     - '--path.sysfs=/host/sys'
-    #     - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    #   ports:
-    #     - 9100:9100
+  # ==========================
+  # node_exporter _ 시스템 매트릭 (linux)
+  # ==========================
+  # system_exporter:
+  #   image: prom/node-exporter:latest
+  #   restart: unless-stopped
+  #   networks:
+  #     - dev_ops_net
+  #   volumes:
+  #     - /proc:/host/proc:ro
+  #     - /sys:/host/sys:ro
+  #     - /:/rootfs:ro
+  #   command:
+  #     - '--path.procfs=/host/proc'
+  #     - '--path.rootfs=/rootfs'
+  #     - '--path.sysfs=/host/sys'
+  #     - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+  #   ports:
+  #     - 9100:9100
 
-  volumes:
-    postgres_data:
-    grafana_data:
-    prometheus_data:
-    loki_data:
-    jenkins_home:
+volumes:
+  postgres_data:
+  grafana_data:
+  prometheus_data:
+  loki_data:
+  jenkins_home:
 
-  networks:
-    dev_ops_net:
+networks:
+  dev_ops_net:
