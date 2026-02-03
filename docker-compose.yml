@@ -23,6 +23,9 @@ services:
       - KC_DB_USERNAME=${ADMIN_ID}
       - KC_DB_PASSWORD=${ADMIN_PW}
       - KC_METRICS_ENABLED=true
+      - KC_HOSTNAME=host.docker.internal
+      - KC_HOSTNAME_STRICT=false
+      - KC_HTTP_RELATIVE_PATH=/auth
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,6 +73,8 @@ services:
       - dev_ops_net
     ports:
       - "5000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # ==========================
   # Prometheus
@@ -85,6 +90,8 @@ services:
       - dev_ops_net
     ports:
       - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # ==========================
   # Alertmanager
@@ -98,6 +105,8 @@ services:
       - dev_ops_net
     ports:
       - 9093:9093
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # ==========================
   # Loki
@@ -113,6 +122,8 @@ services:
       - ./monitoring/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml -config.expand-env=true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # ==========================
   # promtail
@@ -148,6 +159,8 @@ services:
     volumes:
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # ==========================
   # node_exporter _ 시스템 매트릭 (linux)
