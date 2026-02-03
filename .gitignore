@@ -1,0 +1,4 @@
+## 설정파일 ##
+/monitoring/alertmanager/alertmanager.yml
+.env
+!.env.example
