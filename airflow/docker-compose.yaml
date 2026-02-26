@@ -49,10 +49,10 @@ x-airflow-common:
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
     # For backward compatibility, with Airflow <2.3
-    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-db/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
@@ -64,16 +64,19 @@ x-airflow-common:
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"
+  networks:
+      - dev_ops_net
   depends_on:
     &airflow-common-depends-on
     redis:
       condition: service_healthy
-    postgres:
+    airflow-db:
       condition: service_healthy
 
 services:
-  postgres:
+  airflow-db:
     image: postgres:13
+    container_name: airflow_postgres
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -85,6 +88,8 @@ services:
       interval: 5s
       retries: 5
     restart: always
+    networks:
+      - dev_ops_net
 
   redis:
     image: redis:latest
@@ -96,20 +101,20 @@ services:
       timeout: 30s
       retries: 50
     restart: always
+    networks:
+      - dev_ops_net
 
   airflow-webserver:
     <<: *airflow-common
     command: webserver
     ports:
-      - 8088:8088
+      - 8088:8080
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 10s
       timeout: 10s
       retries: 5
     restart: always
-    networks:
-      - dev_ops_net
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -267,8 +272,6 @@ services:
       timeout: 10s
       retries: 5
     restart: always
-    networks:
-      - dev_ops_net
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
