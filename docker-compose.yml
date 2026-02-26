@@ -181,6 +181,7 @@ services:
   #     - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
   #   ports:
   #     - 9100:9100
+  
 
 volumes:
   postgres_data:
@@ -191,3 +192,4 @@ volumes:
 
 networks:
   dev_ops_net:
+    name: dev_ops_net
